@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../config/supabase';
-import { GOOGLE_AUTH_CONFIG } from '../config/googleAuth';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -17,32 +16,37 @@ const AuthCallback = () => {
       try {
         console.log('AuthCallback component mounted');
         
-        // Get the full URL including the hash
-        const fullUrl = window.location.href;
-        console.log('Full URL:', fullUrl);
+        // Get the hash fragment and convert it to searchParams
+        const hashParams = new URLSearchParams(
+          window.location.hash.substring(1) // Remove the # character
+        );
+        
+        console.log('Hash params:', Object.fromEntries(hashParams.entries()));
+        
+        // Check for access_token in hash
+        const accessToken = hashParams.get('access_token');
+        if (accessToken) {
+          console.log('Access token found in hash');
+          const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get('refresh_token')
+          });
 
-        // Handle hash fragment if present
-        if (window.location.hash) {
-          console.log('Hash fragment detected');
-          // Let Supabase handle the hash fragment
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error('Session error:', error);
-            throw error;
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            throw sessionError;
           }
 
-          if (data?.session) {
-            console.log('Valid session found');
+          if (session) {
+            console.log('Session established');
             toast.success('Successfully signed in with Google');
             navigate('/meditation', { replace: true });
             return;
           }
         }
 
-        // Handle query parameters
+        // Handle query parameters for errors
         const params = new URLSearchParams(window.location.search);
-        
         if (params.get('error')) {
           const errorMsg = `Authentication error: ${params.get('error_description') || params.get('error')}`;
           console.error('Auth error from params:', errorMsg);
@@ -52,8 +56,21 @@ const AuthCallback = () => {
           return;
         }
 
-        // If no session and no error, redirect to auth
-        console.log('No session or error found, redirecting to auth');
+        // If no token and no error, check for existing session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('Session check error:', sessionError);
+          throw sessionError;
+        }
+
+        if (session) {
+          console.log('Existing session found');
+          navigate('/meditation', { replace: true });
+          return;
+        }
+
+        // If we get here, redirect to auth
+        console.log('No session or token found, redirecting to auth');
         navigate('/auth', { replace: true });
       } catch (error) {
         console.error('Auth callback error:', error);
