@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,9 +9,12 @@ const AuthCallback = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const location = useLocation();
+  const { setCurrentUser } = useAuth();
 
   useEffect(() => {
+    let mounted = true;
+
     const handleAuthCallback = async () => {
       try {
         console.log('AuthCallback component mounted');
@@ -39,20 +42,27 @@ const AuthCallback = () => {
 
           if (session) {
             console.log('Session established');
-            toast.success('Successfully signed in with Google');
-            navigate('/meditation', { replace: true });
+            if (mounted) {
+              setCurrentUser(session.user);
+              toast.success('Successfully signed in with Google');
+              setLoading(false); // Clear loading before navigation
+              navigate('/meditation', { replace: true });
+            }
             return;
           }
         }
 
         // Handle query parameters for errors
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(location.search);
         if (params.get('error')) {
           const errorMsg = `Authentication error: ${params.get('error_description') || params.get('error')}`;
           console.error('Auth error from params:', errorMsg);
-          setError(errorMsg);
-          toast.error(errorMsg);
-          setTimeout(() => navigate('/auth', { replace: true }), 2000);
+          if (mounted) {
+            setError(errorMsg);
+            setLoading(false);
+            toast.error(errorMsg);
+            setTimeout(() => mounted && navigate('/auth', { replace: true }), 2000);
+          }
           return;
         }
 
@@ -65,25 +75,45 @@ const AuthCallback = () => {
 
         if (session) {
           console.log('Existing session found');
-          navigate('/meditation', { replace: true });
+          if (mounted) {
+            setCurrentUser(session.user);
+            setLoading(false);
+            navigate('/meditation', { replace: true });
+          }
           return;
         }
 
         // If we get here, redirect to auth
         console.log('No session or token found, redirecting to auth');
-        navigate('/auth', { replace: true });
+        if (mounted) {
+          setLoading(false);
+          navigate('/auth', { replace: true });
+        }
       } catch (error) {
         console.error('Auth callback error:', error);
-        setError(error.message);
-        toast.error(error.message);
-        setTimeout(() => navigate('/auth', { replace: true }), 2000);
-      } finally {
-        setLoading(false);
+        if (mounted) {
+          setError(error.message);
+          setLoading(false);
+          toast.error(error.message);
+          setTimeout(() => mounted && navigate('/auth', { replace: true }), 2000);
+        }
       }
     };
 
     handleAuthCallback();
-  }, [navigate]);
+
+    // Cleanup function
+    return () => {
+      mounted = false;
+    };
+  }, [navigate, location, setCurrentUser]);
+
+  // If we're not loading and don't have an error, redirect immediately
+  useEffect(() => {
+    if (!loading && !error) {
+      navigate('/meditation', { replace: true });
+    }
+  }, [loading, error, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-300">
