@@ -236,11 +236,18 @@ export const AuthProvider = ({ children }) => {
 
       if (error) throw error;
       
+      // If we have a URL, redirect to it
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+      
       return data;
     } catch (error) {
       console.error('Google sign-in error:', error);
       setError(error.message);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
