@@ -100,6 +100,9 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async ({ email, password, options }) => {
     try {
+      setLoading(true);
+      setError(null);
+      
       // First, check if the username already exists
       const username = options?.data?.username;
       if (username) {
@@ -139,12 +142,18 @@ export const AuthProvider = ({ children }) => {
       
       return data;
     } catch (error) {
+      setError(error.message);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const login = async ({ email, username, password }) => {
     try {
+      setLoading(true);
+      setError(null);
+
       if (email) {
         // Login with email
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -202,13 +211,19 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Either email or username is required');
     } catch (error) {
       console.error('Login error:', error);
+      setError(error.message);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signInWithGoogle = async () => {
     try {
+      setLoading(true);
+      setError(null);
       console.log('Starting Google sign-in process...');
+      
       const redirectUrl = `${window.location.origin}/auth/callback`;
       console.log('Using redirect URL:', redirectUrl);
       
@@ -225,6 +240,7 @@ export const AuthProvider = ({ children }) => {
       
       if (error) {
         console.error('Google sign-in error:', error);
+        setError(error.message);
         throw error;
       }
 
@@ -233,62 +249,91 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Error in signInWithGoogle:', error);
+      setError(error.message);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error) throw error;
       
       // Clear local user data
+      setCurrentUser(null);
       setUserProfile(null);
       
-      // Clear any Google-specific cookies/storage that might persist
-      // This attempts to clear common auth-related cookies
+      // Clear local storage items that might contain auth data
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('supabase.auth.expires_at');
+      
+      // Clear any auth-related cookies
       document.cookie.split(';').forEach(cookie => {
         const [name] = cookie.trim().split('=');
-        if (name.includes('google') || name.includes('auth') || name.includes('session')) {
+        if (name.includes('auth') || name.includes('session')) {
           document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
         }
       });
       
-      // Try to clear Google's authentication cache
-      // This won't fully work due to cross-origin restrictions, but helps in some scenarios
-      try {
-        const googleLogoutUrl = 'https://accounts.google.com/logout';
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = googleLogoutUrl;
-        document.body.appendChild(iframe);
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-        }, 500);
-      } catch (e) {
-        console.log('Additional Google logout attempt failed:', e);
-      }
     } catch (error) {
       console.error('Logout error:', error);
+      setError(error.message);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   // Add resetPassword function
   const resetPassword = async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/reset-password',
-    });
-    if (error) throw error;
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset-password',
+      });
+      
+      if (error) {
+        setError(error.message);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Add updatePassword function
   const updatePassword = async (newPassword) => {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-    if (error) throw error;
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) {
+        setError(error.message);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Update password error:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Update user profile function
