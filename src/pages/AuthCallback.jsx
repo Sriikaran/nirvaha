@@ -10,7 +10,7 @@ const AuthCallback = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-  const { setCurrentUser } = useAuth();
+  const { setCurrentUser, setLoading: setAuthLoading } = useAuth();
 
   useEffect(() => {
     let mounted = true;
@@ -45,7 +45,8 @@ const AuthCallback = () => {
             if (mounted) {
               setCurrentUser(session.user);
               toast.success('Successfully signed in with Google');
-              setLoading(false); // Clear loading before navigation
+              setLoading(false);
+              setAuthLoading(false); // Clear auth context loading state
               navigate('/meditation', { replace: true });
             }
             return;
@@ -60,6 +61,7 @@ const AuthCallback = () => {
           if (mounted) {
             setError(errorMsg);
             setLoading(false);
+            setAuthLoading(false); // Clear auth context loading state
             toast.error(errorMsg);
             setTimeout(() => mounted && navigate('/auth', { replace: true }), 2000);
           }
@@ -78,6 +80,7 @@ const AuthCallback = () => {
           if (mounted) {
             setCurrentUser(session.user);
             setLoading(false);
+            setAuthLoading(false); // Clear auth context loading state
             navigate('/meditation', { replace: true });
           }
           return;
@@ -87,6 +90,7 @@ const AuthCallback = () => {
         console.log('No session or token found, redirecting to auth');
         if (mounted) {
           setLoading(false);
+          setAuthLoading(false); // Clear auth context loading state
           navigate('/auth', { replace: true });
         }
       } catch (error) {
@@ -94,6 +98,7 @@ const AuthCallback = () => {
         if (mounted) {
           setError(error.message);
           setLoading(false);
+          setAuthLoading(false); // Clear auth context loading state
           toast.error(error.message);
           setTimeout(() => mounted && navigate('/auth', { replace: true }), 2000);
         }
@@ -106,7 +111,7 @@ const AuthCallback = () => {
     return () => {
       mounted = false;
     };
-  }, [navigate, location, setCurrentUser]);
+  }, [navigate, location, setCurrentUser, setAuthLoading]);
 
   // If we're not loading and don't have an error, redirect immediately
   useEffect(() => {

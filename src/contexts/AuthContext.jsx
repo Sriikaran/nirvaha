@@ -222,37 +222,25 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Starting Google sign-in process...');
-      
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      console.log('Using redirect URL:', redirectUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: GOOGLE_AUTH_CONFIG.redirectTo,
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent'
-          }
-        }
+            prompt: 'consent',
+          },
+        },
       });
-      
-      if (error) {
-        console.error('Google sign-in error:', error);
-        setError(error.message);
-        throw error;
-      }
 
-      if (data?.url) {
-        window.location.href = data.url;
-      }
+      if (error) throw error;
+      
+      return data;
     } catch (error) {
-      console.error('Error in signInWithGoogle:', error);
+      console.error('Google sign-in error:', error);
       setError(error.message);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -363,9 +351,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    let mounted = true;
+    
     // Get initial session
     const initAuth = async () => {
       try {
+        if (!mounted) return;
         setLoading(true);
         
         // Get session data
@@ -377,6 +368,7 @@ export const AuthProvider = ({ children }) => {
         
         // If we have a session, set the current user
         if (session?.user) {
+          if (!mounted) return;
           setCurrentUser(session.user);
           
           // Fetch user profile
@@ -386,18 +378,23 @@ export const AuthProvider = ({ children }) => {
           if (!profile) {
             await upsertProfile(session.user);
           } else {
+            if (!mounted) return;
             setUserProfile(profile);
           }
         } else {
+          if (!mounted) return;
           setCurrentUser(null);
           setUserProfile(null);
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
+        if (!mounted) return;
         setCurrentUser(null);
         setUserProfile(null);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
     
@@ -405,6 +402,8 @@ export const AuthProvider = ({ children }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
       // Set currentUser based on session
       setCurrentUser(session?.user ?? null);
       
@@ -417,16 +416,21 @@ export const AuthProvider = ({ children }) => {
           if (!profile || event === 'SIGNED_IN') {
             await upsertProfile(session.user);
           } else {
+            if (!mounted) return;
             setUserProfile(profile);
           }
         }
       } else {
         // Clear profile when signed out
+        if (!mounted) return;
         setUserProfile(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = {
@@ -441,7 +445,8 @@ export const AuthProvider = ({ children }) => {
     signInWithGoogle,
     resetPassword,
     updatePassword,
-    updateProfile
+    updateProfile,
+    setLoading // Export setLoading to allow manual control when needed
   };
 
   return (
