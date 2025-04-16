@@ -209,58 +209,30 @@ export const AuthProvider = ({ children }) => {
   const signInWithGoogle = async () => {
     try {
       console.log('Starting Google sign-in process...');
-      console.log('Redirect URL:', window.location.origin + '/auth/callback');
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log('Using redirect URL:', redirectUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/auth/callback',
-          scopes: GOOGLE_AUTH_CONFIG.scopes.join(' '),
+          redirectTo: redirectUrl,
           queryParams: {
-            prompt: 'select_account',
             access_type: 'offline',
-            response_type: 'code'
+            prompt: 'consent'
           }
         }
       });
       
-      console.log('Google sign-in response:', data);
-      
       if (error) {
-        console.error('Google sign-in error inside function:', error);
-        setError(error.message);
+        console.error('Google sign-in error:', error);
         throw error;
       }
 
-      // If we have a URL, we need to redirect to Google
       if (data?.url) {
-        console.log('Redirecting to Google OAuth URL:', data.url);
-        return data;
+        window.location.href = data.url;
       }
-
-      // If we don't have a URL, try to get the session
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Session error after Google sign-in:', sessionError);
-        setError(sessionError.message);
-        throw sessionError;
-      }
-
-      if (sessionData?.session?.user) {
-        console.log('Google sign-in successful, user:', sessionData.session.user);
-        setCurrentUser(sessionData.session.user);
-        const profile = await upsertProfile(sessionData.session.user);
-        if (!profile) {
-          setError('Failed to load user profile after Google sign-in');
-          throw new Error('Failed to load user profile after Google sign-in');
-        }
-      }
-
-      return data;
     } catch (error) {
-      console.error('Google sign-in error:', error);
-      setError(error.message);
+      console.error('Error in signInWithGoogle:', error);
       throw error;
     }
   };

@@ -13,73 +13,60 @@ const AuthCallback = () => {
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    // Function to handle the OAuth callback
     const handleAuthCallback = async () => {
       try {
         console.log('AuthCallback component mounted');
-        // Extract hash fragment or query parameters from URL
-        const hash = window.location.hash;
-        const params = new URLSearchParams(window.location.search);
-        const url = window.location.href;
         
-        console.log('Current URL:', url);
-        console.log('Hash fragment:', hash);
-        console.log('URL parameters:', Object.fromEntries(params.entries()));
-        console.log('Current user:', currentUser);
-        
-        // If user is already logged in, or we have auth data in the URL
-        if (currentUser || hash || params.get('code')) {
-          console.log('Verifying session...');
-          // Verify the session
+        // Get the full URL including the hash
+        const fullUrl = window.location.href;
+        console.log('Full URL:', fullUrl);
+
+        // Handle hash fragment if present
+        if (window.location.hash) {
+          console.log('Hash fragment detected');
+          // Let Supabase handle the hash fragment
           const { data, error } = await supabase.auth.getSession();
-          
-          console.log('Session data:', data);
           
           if (error) {
             console.error('Session error:', error);
             throw error;
           }
-          
+
           if (data?.session) {
-            console.log('Valid session found, redirecting to:', GOOGLE_AUTH_CONFIG.defaultRedirectPath);
+            console.log('Valid session found');
             toast.success('Successfully signed in with Google');
-            // Navigate to the default redirect path
-            setTimeout(() => {
-              navigate(GOOGLE_AUTH_CONFIG.defaultRedirectPath, { replace: true });
-            }, 500);
-          } else {
-            // Handle potential errors in URL parameters
-            if (params.get('error')) {
-              const errorMsg = `Authentication error: ${params.get('error_description') || params.get('error')}`;
-              console.error(errorMsg);
-              setError(errorMsg);
-              toast.error(errorMsg);
-              setTimeout(() => {
-                navigate('/auth', { replace: true });
-              }, 2000);
-            } else {
-              console.log('No session found, redirecting to auth page');
-              navigate('/auth', { replace: true });
-            }
+            navigate('/meditation', { replace: true });
+            return;
           }
-        } else {
-          console.log('No auth data found, redirecting to auth page');
-          navigate('/auth', { replace: true });
         }
+
+        // Handle query parameters
+        const params = new URLSearchParams(window.location.search);
+        
+        if (params.get('error')) {
+          const errorMsg = `Authentication error: ${params.get('error_description') || params.get('error')}`;
+          console.error('Auth error from params:', errorMsg);
+          setError(errorMsg);
+          toast.error(errorMsg);
+          setTimeout(() => navigate('/auth', { replace: true }), 2000);
+          return;
+        }
+
+        // If no session and no error, redirect to auth
+        console.log('No session or error found, redirecting to auth');
+        navigate('/auth', { replace: true });
       } catch (error) {
         console.error('Auth callback error:', error);
         setError(error.message);
         toast.error(error.message);
-        setTimeout(() => {
-          navigate('/auth', { replace: true });
-        }, 2000);
+        setTimeout(() => navigate('/auth', { replace: true }), 2000);
       } finally {
         setLoading(false);
       }
     };
 
     handleAuthCallback();
-  }, [navigate, currentUser]);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-300">
