@@ -10,7 +10,7 @@ const AuthCallback = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-  const { setCurrentUser, setLoading: setAuthLoading } = useAuth();
+  const { setCurrentUser, clearLoadingStates } = useAuth();
 
   useEffect(() => {
     let mounted = true;
@@ -18,6 +18,10 @@ const AuthCallback = () => {
     const handleAuthCallback = async () => {
       try {
         console.log('AuthCallback component mounted');
+        
+        // Clear loading states immediately
+        setLoading(false);
+        clearLoadingStates();
         
         // Get the hash fragment and convert it to searchParams
         const hashParams = new URLSearchParams(
@@ -45,10 +49,9 @@ const AuthCallback = () => {
             if (mounted) {
               setCurrentUser(session.user);
               toast.success('Successfully signed in with Google');
-              setLoading(false);
-              setAuthLoading(false);
               // Clear the hash from the URL
               window.location.hash = '';
+              // Navigate immediately
               navigate('/meditation', { replace: true });
             }
             return;
@@ -62,10 +65,9 @@ const AuthCallback = () => {
           console.error('Auth error from params:', errorMsg);
           if (mounted) {
             setError(errorMsg);
-            setLoading(false);
-            setAuthLoading(false);
             toast.error(errorMsg);
-            setTimeout(() => mounted && navigate('/auth', { replace: true }), 2000);
+            // Navigate immediately on error
+            navigate('/auth', { replace: true });
           }
           return;
         }
@@ -81,8 +83,7 @@ const AuthCallback = () => {
           console.log('Existing session found');
           if (mounted) {
             setCurrentUser(session.user);
-            setLoading(false);
-            setAuthLoading(false);
+            // Navigate immediately
             navigate('/meditation', { replace: true });
           }
           return;
@@ -91,18 +92,16 @@ const AuthCallback = () => {
         // If we get here, redirect to auth
         console.log('No session or token found, redirecting to auth');
         if (mounted) {
-          setLoading(false);
-          setAuthLoading(false);
+          // Navigate immediately
           navigate('/auth', { replace: true });
         }
       } catch (error) {
         console.error('Auth callback error:', error);
         if (mounted) {
           setError(error.message);
-          setLoading(false);
-          setAuthLoading(false);
           toast.error(error.message);
-          setTimeout(() => mounted && navigate('/auth', { replace: true }), 2000);
+          // Navigate immediately on error
+          navigate('/auth', { replace: true });
         }
       }
     };
@@ -113,14 +112,7 @@ const AuthCallback = () => {
     return () => {
       mounted = false;
     };
-  }, [navigate, location, setCurrentUser, setAuthLoading]);
-
-  // If we're not loading and don't have an error, redirect immediately
-  useEffect(() => {
-    if (!loading && !error) {
-      navigate('/meditation', { replace: true });
-    }
-  }, [loading, error, navigate]);
+  }, [navigate, location, setCurrentUser, clearLoadingStates]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-300">
