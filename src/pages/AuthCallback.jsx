@@ -17,12 +17,29 @@ const AuthCallback = () => {
 
     const handleAuthCallback = async () => {
       try {
-        console.log('AuthCallback component mounted');
+        console.log('AuthCallback component mounted, current URL:', window.location.href);
+        console.log('Hash:', window.location.hash);
+        console.log('Search params:', location.search);
         
-        // Clear loading states immediately
-        setLoading(false);
-        clearLoadingStates();
-        
+        // Clear loading states immediately to prevent blank screen
+        if (mounted) {
+          setLoading(false);
+          clearLoadingStates();
+        }
+
+        // Handle error in URL parameters first
+        const params = new URLSearchParams(location.search);
+        if (params.get('error')) {
+          const errorMsg = `Authentication error: ${params.get('error_description') || params.get('error')}`;
+          console.error('Auth error from params:', errorMsg);
+          if (mounted) {
+            setError(errorMsg);
+            toast.error(errorMsg);
+            setTimeout(() => navigate('/auth', { replace: true }), 2000);
+          }
+          return;
+        }
+
         // Get the hash fragment and convert it to searchParams
         const hashParams = new URLSearchParams(
           window.location.hash.substring(1) // Remove the # character
@@ -33,7 +50,7 @@ const AuthCallback = () => {
         // Check for access_token in hash
         const accessToken = hashParams.get('access_token');
         if (accessToken) {
-          console.log('Access token found in hash');
+          console.log('Access token found, setting up session...');
           const { data: { session }, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: hashParams.get('refresh_token')
@@ -45,34 +62,23 @@ const AuthCallback = () => {
           }
 
           if (session) {
-            console.log('Session established');
+            console.log('Session established successfully');
             if (mounted) {
-              setCurrentUser(session.user);
-              toast.success('Successfully signed in with Google');
+              await setCurrentUser(session.user);
               // Clear the hash from the URL
               window.location.hash = '';
-              // Navigate immediately
+              toast.success('Successfully signed in with Google');
               navigate('/meditation', { replace: true });
             }
             return;
+          } else {
+            console.error('No session created after setting access token');
+            throw new Error('Failed to establish session');
           }
         }
 
-        // Handle query parameters for errors
-        const params = new URLSearchParams(location.search);
-        if (params.get('error')) {
-          const errorMsg = `Authentication error: ${params.get('error_description') || params.get('error')}`;
-          console.error('Auth error from params:', errorMsg);
-          if (mounted) {
-            setError(errorMsg);
-            toast.error(errorMsg);
-            // Navigate immediately on error
-            navigate('/auth', { replace: true });
-          }
-          return;
-        }
-
-        // If no token and no error, check for existing session
+        // If no token in hash, check for existing session
+        console.log('No access token in hash, checking for existing session...');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) {
           console.error('Session check error:', sessionError);
@@ -82,17 +88,15 @@ const AuthCallback = () => {
         if (session) {
           console.log('Existing session found');
           if (mounted) {
-            setCurrentUser(session.user);
-            // Navigate immediately
+            await setCurrentUser(session.user);
             navigate('/meditation', { replace: true });
           }
           return;
         }
 
-        // If we get here, redirect to auth
-        console.log('No session or token found, redirecting to auth');
+        // If we get here, no valid session was found
+        console.log('No valid session found, redirecting to auth');
         if (mounted) {
-          // Navigate immediately
           navigate('/auth', { replace: true });
         }
       } catch (error) {
@@ -100,12 +104,12 @@ const AuthCallback = () => {
         if (mounted) {
           setError(error.message);
           toast.error(error.message);
-          // Navigate immediately on error
-          navigate('/auth', { replace: true });
+          setTimeout(() => navigate('/auth', { replace: true }), 2000);
         }
       }
     };
 
+    // Execute the callback handler
     handleAuthCallback();
 
     // Cleanup function
@@ -114,6 +118,7 @@ const AuthCallback = () => {
     };
   }, [navigate, location, setCurrentUser, clearLoadingStates]);
 
+  // Show loading state or error
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-300">
       <motion.div
@@ -139,7 +144,13 @@ const AuthCallback = () => {
               <p className="text-gray-400 mt-2">{error}</p>
               <p className="text-gray-400 mt-4">Redirecting to login page...</p>
             </div>
-          ) : null}
+          ) : (
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-white">Redirecting...</h2>
+              <p className="text-gray-400 mt-2">You will be redirected to the app momentarily</p>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
