@@ -239,6 +239,7 @@ export const AuthProvider = ({ children }) => {
       // If we have a URL, redirect to it
       if (data?.url) {
         window.location.href = data.url;
+        return;
       }
       
       return data;
@@ -357,6 +358,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Add a function to clear loading states
+  const clearLoadingStates = () => {
+    setLoading(false);
+  };
+
   useEffect(() => {
     let mounted = true;
     
@@ -453,7 +459,8 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
     updatePassword,
     updateProfile,
-    setLoading // Export setLoading to allow manual control when needed
+    setLoading,
+    clearLoadingStates // Add this to the context value
   };
 
   return (
