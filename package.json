@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run postbuild",
+    "postbuild": "cp public/_redirects dist/",
     "lint": "eslint .",
     "serve": "vite preview"
   },

@@ -9,5 +9,18 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@headlessui/react', '@heroicons/react', 'framer-motion'],
+          auth: ['@supabase/supabase-js', 'firebase']
+        }
+      }
+    }
   },
+  server: {
+    port: 3000,
+    strictPort: true
+  }
 })
