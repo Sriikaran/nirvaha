@@ -238,20 +238,7 @@ export const AuthProvider = ({ children }) => {
       
       // If we have a URL, redirect to it
       if (data?.url) {
-        // Clear any existing session data
-        await supabase.auth.signOut();
-        // Clear local storage and cookies
-        localStorage.removeItem('supabase.auth.token');
-        localStorage.removeItem('supabase.auth.expires_at');
-        document.cookie.split(';').forEach(cookie => {
-          const [name] = cookie.trim().split('=');
-          if (name.includes('auth') || name.includes('session')) {
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-          }
-        });
-        // Redirect to Google OAuth
         window.location.href = data.url;
-        return;
       }
       
       return data;

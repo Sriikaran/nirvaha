@@ -12,11 +12,11 @@ export const GOOGLE_AUTH_CONFIG = {
   ],
   
   // These URLs are used by Supabase to handle the authentication flow
-  redirectTo: window.location.origin + '/auth/callback',
+  redirectTo: `${window.location.origin}/auth/callback`,
   
   // After authentication, the user will be redirected to the meditation page
   defaultRedirectPath: '/meditation',
   
   // Enable for debugging OAuth flow
-  debug: false
+  debug: true
 }; 
